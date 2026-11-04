@@ -1,12 +1,13 @@
 """Config / generation-config / tokenizer loading that works for both HF and hf_olmo models.
 
 transformers' Auto* classes cannot read AI2's original `hf_olmo` checkpoints without
-ai2-olmo's remote code, so those are routed to `olmo_config`; everything else goes
-through transformers as before.
+ai2-olmo's remote code, so those are routed to `olmo_config`. The GLM-4.6 config is
+registered with AutoConfig, since the pinned transformers predates it.
 """
 
 from tokenizers import Tokenizer
 
+from tokasaurus.model.glm4_moe_config import register_glm4_moe_config
 from tokasaurus.model.olmo_config import (
     OlmoConfig,
     OlmoGenerationConfig,
@@ -21,6 +22,8 @@ def load_config(model_path: str, trust_remote_code: bool = False):
 
     from transformers import AutoConfig
 
+    # model types the pinned transformers predates
+    register_glm4_moe_config()
     return AutoConfig.from_pretrained(model_path, trust_remote_code=trust_remote_code)
 
 
