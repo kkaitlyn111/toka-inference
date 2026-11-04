@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 import psutil
 import pydra
+import requests
 from datasets import load_dataset
 from openai import OpenAI
 from tqdm import tqdm
@@ -77,17 +78,22 @@ def wait_for_startup(
         if process.poll() is not None:
             raise RuntimeError(f"Server crashed with returncode {process.returncode}")
 
+        # tokasaurus answers /ping as soon as it is up; other servers (e.g. vLLM)
+        # fall through to a 1-token completion. Completions rather than chat so that
+        # base models without a chat template work too.
         try:
-            client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "user", "content": "tell me a funny joke about cookies"}
-                ],
-                max_tokens=10,
-            )
-            return
+            response = requests.get(f"http://localhost:{port}/ping", timeout=1)
+            if response.status_code == 200 and response.json().get("message") == "pong":
+                return
         except Exception:
-            print(f"Server not yet started (attempt {i}) retrying...")
+            pass
+
+        try:
+            client.completions.create(model=model, prompt="test", max_tokens=1)
+            return
+        except Exception as e:
+            if i % 10 == 0:
+                print(f"Server not yet started (attempt {i}): {type(e).__name__}")
             time.sleep(retry_seconds)
 
     raise RuntimeError(f"Server not started after {max_retries} attempts.")
