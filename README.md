@@ -12,7 +12,7 @@ high-throughput LLM inference engine, to a few practical uses. It adds compatibi
 | model | architecture |
 |---|---|
 | Llama 3, Qwen 2, Qwen 3 | dense |
-| OLMo (`hf_olmo` checkpoints, incl. DataDecide) | dense |
+| OLMo | dense |
 | GLM-4.6 | MoE, FP8 weights |
 | Qwen 3.5 | GDN + full attention |
 | Gemma 4 | SWA + full attention |
