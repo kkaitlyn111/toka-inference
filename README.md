@@ -1,10 +1,10 @@
 # toka-inference
 
-toka-inference extends [Tokasaurus](https://github.com/ScalingIntelligence/tokasaurus), a
-high-throughput LLM inference engine, in three directions. It adds an AMD ROCm attention
-backend built on AITER kernels, hybrid-attention architectures that mix full attention
-with gated DeltaNet (GDN) linear attention or sliding-window attention (SWA), and native
-support for the GLM, Qwen, Gemma, OLMo, Muse and gpt-oss model families.
+This repo extends [Tokasaurus](https://github.com/ScalingIntelligence/tokasaurus), a
+high-throughput LLM inference engine, in a few practical uses. It adds compatibility with 1. AMD (ROCm attention
+backend built on AITER kernels), 2. hybrid-attention architectures that mix full attention
+with Gated DeltaNet (GDN) linear attention or sliding-window attention (SWA), and 3. native
+support for the GLM, Qwen, Gemma, OLMo, Muse, gpt-oss etc. model families. Across these families, it supports inference with Cartridges (trained KV cache modules) and Attention Matching, along with capturing of GDN state.
 
 ## Models
 
