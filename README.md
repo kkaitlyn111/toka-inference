@@ -2,28 +2,19 @@
 
 An extension of [Tokasaurus](https://github.com/ScalingIntelligence/tokasaurus), the
 high-throughput LLM inference engine, with additional model support, an AMD ROCm backend,
-and an engine benchmark harness. Built while serving models for cartridge (KV-cache
-compaction) research.
+and an engine benchmark harness.
 
 ## Supported models
 
-| model | architecture | inference | cartridge training | hardware | verification |
-|---|---|---|---|---|---|
-| Llama 3, Qwen 2, Qwen 3 | dense | yes (upstream) | via Accordion | NVIDIA; AMD on Qwen3-4B | upstream tests; ROCm backend parity on Qwen3-4B |
-| OLMo / DataDecide (`hf_olmo`) | dense | yes | no | NVIDIA | logprobs vs HF on GPU (A6000), GSM8K benchmark |
-| GLM-4.6 (355B) | MoE, FP8 | yes | via Accordion | NVIDIA, AMD¹ | CPU-tested vs HF; GPU parity checks pending. Full model ran on MI350X (tp=4)¹ |
-| Gemma 4 31B | sliding-window + full attention | yes | via Accordion | NVIDIA, AMD¹ | CPU-tested vs HF; GPU parity checks pending. Full-model parity on L40S/H200¹ |
-| Muse Glimmer 30B | sliding-window + NoPE full attention | yes | via Accordion | NVIDIA | CPU-tested vs HF; GPU parity checks pending. Full-model parity on H200, 6 to 9223 tokens¹ |
-| Qwen 3.5 9B and other gated-DeltaNet hybrids | linear-attention hybrid | coming soon | via Accordion | | |
-| gpt-oss 20B | MoE, attention sinks | coming soon | via Accordion | | |
-
-¹ Full-size results come from the original implementations in the lab's research codebase.
-The versions here are ports onto upstream Tokasaurus, checked against HF transformers on
-tiny random checkpoints (`tests/test_model_parity.py`). The CPU path matches HF to ~1e-6;
-the GPU (flashinfer) runs of that check are pending.
-
-Cartridge training is done in Accordion, the lab's training codebase, and is not part of
-this repo.
+| model | architecture | status | tested |
+|---|---|---|---|
+| Llama 3, Qwen 2, Qwen 3 | dense | supported (upstream) | upstream tests; ROCm backend on Qwen3-4B |
+| OLMo / DataDecide (`hf_olmo`) | dense | supported | logprobs vs HF transformers on GPU |
+| GLM-4.6 (355B) | MoE, FP8 | supported | parity vs HF on CPU; GPU parity pending |
+| Gemma 4 31B | sliding-window + full attention | supported | parity vs HF on CPU; GPU parity pending |
+| Muse Glimmer 30B | sliding-window + NoPE full attention | supported | parity vs HF on CPU; GPU parity pending |
+| Qwen 3.5 9B and other gated-DeltaNet hybrids | linear-attention hybrid | coming soon | |
+| gpt-oss 20B | MoE, attention sinks | coming soon | |
 
 ## What's added
 
@@ -63,16 +54,3 @@ On AMD: `pip install -r requirements-rocm.txt && pip install -e . --no-deps`, pl
 [AITER](https://github.com/ROCm/aiter) for the fast path. See [`docs/ROCM.md`](docs/ROCM.md).
 
 Upstream's full CLI docs are in [`docs/UPSTREAM_README.md`](docs/UPSTREAM_README.md).
-
-## Credits
-
-This builds on Tokasaurus by Juravsky et al. and keeps its Apache-2.0 license.
-
-```bibtex
-@misc{juravsky2025tokasaurus,
-  author       = {Jordan Juravsky and Ayush Chakravarthy and Ryan Ehrlich and Sabri Eyuboglu and Bradley Brown and Joseph Shetaye and Christopher R{\'e} and Azalia Mirhoseini},
-  title        = {Tokasaurus: An LLM Inference Engine for High-Throughput Workloads},
-  year         = {2025},
-  howpublished = {\url{https://scalingintelligence.stanford.edu/blogs/tokasaurus/}}
-}
-```

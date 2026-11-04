@@ -22,9 +22,7 @@ Notes and caveats:
   harness's fixed arrival schedule (problem *i* is sent at 0.1 × *i* seconds, inherited from
   upstream's `monkeys_gsm8k.py`), so every run has a ~410 s floor. The gap between
   engines is therefore a lower bound on the steady-state difference.
-* The vLLM and first Tokasaurus rows were filed under an `a100-40G` log directory, and
-  the same Tokasaurus run also appears under `a100-80G`, so the A100 memory variant
-  (40GB vs 80GB) is not certain from the logs.
+* The A100 memory variant (40GB or 80GB) for the first two rows was not recorded.
 * The hydragen row also turns on `torch_compile`, so it is not a pure hydragen
   ablation. A second hydragen run took 3453.9 s with identical settings and is
   treated as an outlier (its cause was not recorded); it is kept in
