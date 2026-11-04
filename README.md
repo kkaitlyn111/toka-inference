@@ -21,7 +21,7 @@ high-throughput LLM inference engine, to a few practical uses. It adds compatibi
 
 ## Benchmark
 
-Implementations are verified against vllm and HF Transformers for correctness and efficiency.
+Implementations are benchmarked against vllm and HF Transformers for correctness and efficiency.
 
 ## Installation
 
