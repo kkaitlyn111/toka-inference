@@ -4,10 +4,8 @@ from typing import Callable
 
 import pydra
 import torch.multiprocessing as mp
-from transformers import AutoConfig, GenerationConfig
 
 from tokasaurus.core import complete_server_startup
-
 
 class TimedBarrier:
     def __init__(self, num_procs: int, message: str):
@@ -136,14 +134,14 @@ class ServerConfig(pydra.Config):
         return self.max_tokens_per_forward * 2
 
     def model_config(self):
-        return AutoConfig.from_pretrained(
-            self.model, trust_remote_code=self.trust_remote_code
-        )
+        from tokasaurus.model.loading import load_config
+
+        return load_config(self.model, trust_remote_code=self.trust_remote_code)
 
     def generation_config(self):
-        return GenerationConfig.from_pretrained(
-            self.model, trust_remote_code=self.trust_remote_code
-        )
+        from tokasaurus.model.loading import load_gen_config
+
+        return load_gen_config(self.model, trust_remote_code=self.trust_remote_code)
 
     def finalize(self):
         super().finalize()

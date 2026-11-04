@@ -28,13 +28,18 @@ from openai.types.completion_usage import (
 )
 from openai.types.file_object import FileObject
 from tokenizers import Tokenizer
-from transformers import AutoTokenizer, GenerationConfig
 
 from tokasaurus.common_types import (
     Engine,
     ServerConfig,
 )
 from tokasaurus.manager.types import SequenceOutput
+from tokasaurus.model.loading import (
+    encode_prompt,
+    get_inner_tokenizer,
+    load_gen_config,
+    load_tokenizer,
+)
 from tokasaurus.server.types import (
     BatchFileLine,
     CancelledRequest,
@@ -136,19 +141,22 @@ class ServerState:
     bid_to_batch: dict[str, SubmittedBatch] = field(default_factory=dict)
 
     def __post_init__(self):
-        self.tokenizer = AutoTokenizer.from_pretrained(self.config.tokenizer)
-        self.generation_config = GenerationConfig.from_pretrained(
+        self.tokenizer = load_tokenizer(self.config.tokenizer)
+        self.generation_config = load_gen_config(
             self.config.model, trust_remote_code=True
         )
         self.inverse_vocab = DefaultTokenDict(
-            {token_id: token for token, token_id in self.tokenizer.vocab.items()}
+            {
+                token_id: token
+                for token, token_id in self.get_inner_tokenizer().get_vocab().items()
+            }
         )
         self.requests_per_engine = [0] * len(self.engines)
 
         self.logger = logger.bind(process_name=self.process_name)
 
     def get_inner_tokenizer(self) -> Tokenizer:
-        return self.tokenizer._tokenizer
+        return get_inner_tokenizer(self.tokenizer)
 
 
 async def receive_from_manager_loop(state: ServerState):
@@ -599,6 +607,14 @@ def process_request(
             if (overrides := request.apply_chat_template_overrides) is not None:
                 apply_chat_template_kwargs.update(overrides)
 
+            if not getattr(state.tokenizer, "chat_template", None):
+                # e.g. OLMo base checkpoints, which ship no chat template
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Model {state.config.model} has no chat template; "
+                    "use /v1/completions instead.",
+                )
+
             prompt = state.tokenizer.apply_chat_template(
                 messages, **apply_chat_template_kwargs
             )
@@ -607,7 +623,7 @@ def process_request(
             max_tokens = request.max_completion_tokens or request.max_tokens
         case CompletionsRequest():
             if isinstance(request.prompt, str):
-                input_ids = state.tokenizer(request.prompt)["input_ids"]
+                input_ids = encode_prompt(state.tokenizer, request.prompt)
             elif is_ids_list(request.prompt):
                 input_ids = request.prompt
             else:

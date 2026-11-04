@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List
 
 import huggingface_hub
+import torch
 from safetensors import safe_open
 from tqdm import tqdm
 
@@ -69,11 +70,13 @@ def load_safetensors_repo(
 
     state_dict = {}
 
+    # Read to the CPU and move once at the end: safe_open(device="cuda") on large
+    # files was observed to hang on some nodes.
     for file in tqdm(
         files_to_load,
         desc="Loading safetensors files",
     ):
-        with safe_open(file, framework="pt", device=device) as f:
+        with safe_open(file, framework="pt", device="cpu") as f:
             for k in f.keys():
                 if k in include_parameters:
                     if tp_size > 1 and (split_dim := tp_map.get(k)) is not None:
@@ -93,5 +96,8 @@ def load_safetensors_repo(
                                 )
                     else:
                         state_dict[k] = f.get_tensor(k)
+
+    if device is not None and torch.device(device) != torch.device("cpu"):
+        state_dict = {k: v.to(device) for k, v in state_dict.items()}
 
     return state_dict

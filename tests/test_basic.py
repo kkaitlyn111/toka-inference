@@ -15,18 +15,26 @@ from openai.types.chat import ChatCompletion
 
 from tokasaurus.common_types import ServerConfig
 from tokasaurus.entry import server_manager
+from tokasaurus.model.olmo_config import is_olmo_checkpoint
 from tokasaurus.utils import find_free_port
 
 MODEL = os.environ.get("MODEL", "meta-llama/Llama-3.2-1B-Instruct")
 OVERRIDES = os.environ.get("OVERRIDES", None)
 MODE = os.environ.get("MODE", "simple")
 
+# hf_olmo base checkpoints (e.g. allenai/DataDecide-*) have a 2048-token context and
+# no chat template.
+IS_OLMO = is_olmo_checkpoint(MODEL)
+requires_chat_template = pytest.mark.skipif(
+    IS_OLMO, reason="OLMo base checkpoints have no chat template"
+)
+
 
 def make_basic_config():
     config = ServerConfig()
     config.model = MODEL
     config.kv_cache_num_tokens = 16384
-    config.max_num_tokens_per_request = 16384
+    config.max_num_tokens_per_request = 2048 if IS_OLMO else 16384
     config.port = find_free_port()
 
     if OVERRIDES:
@@ -181,6 +189,7 @@ def make_messages(word: str):
     ]
 
 
+@requires_chat_template
 def test_chat_completions(client: OpenAI):
     for word in ["hello", "howdy", "canteloupe"]:
         response = client.chat.completions.create(
@@ -206,6 +215,7 @@ def test_files(client: OpenAI):
     assert retrieved_content == content
 
 
+@requires_chat_template
 def test_batch_chat_completions(client: OpenAI):
     jsonl_lines = [
         {
@@ -278,6 +288,7 @@ def test_batch_chat_completions(client: OpenAI):
     assert custom_id_to_parsed["request-2"].choices[0].message.content == "howdy"
 
 
+@requires_chat_template
 def test_synchronous_batch_completions(client: OpenAI):
     # Test synchronous batch completions endpoint
     batch_request = {

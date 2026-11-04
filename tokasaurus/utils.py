@@ -24,6 +24,7 @@ from tqdm import tqdm
 from transformers import GenerationConfig
 
 if TYPE_CHECKING:
+    from tokasaurus.model.olmo_config import OlmoGenerationConfig
     from tokasaurus.common_types import ServerConfig
 
 
@@ -444,7 +445,7 @@ def load_pkl(path: str):
         return pickle.load(f)
 
 
-def get_eos_token_ids(generation_config: GenerationConfig):
+def get_eos_token_ids(generation_config: "GenerationConfig | OlmoGenerationConfig"):
     model_eos = generation_config.eos_token_id
     if model_eos is None:
         eos_token_ids = []

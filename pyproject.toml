@@ -32,6 +32,7 @@ dependencies = [
     "torch==2.6.0",
     "flashinfer-python==0.2.0.post2",
     "tqdm",
+    "setuptools",  # torch.utils.cpp_extension (flashinfer JIT) imports it
 ]
 
 [project.optional-dependencies]
@@ -41,6 +42,12 @@ dev = [
     "pyright",
     "math-verify[antlr4_13_2]",
     "matplotlib",
+]
+# Tokenizer for AI2's hf_olmo checkpoints (e.g. allenai/DataDecide-*), plus the HF
+# reference model used by tests/test_olmo_logprobs.py. Pinned to the OLMo commit the
+# OLMo support was developed and tested against.
+olmo = [
+    "ai2-olmo @ git+https://github.com/allenai/OLMo.git@59a53e3f68e546330ca5a99ec626e58f9ab96494",
 ]
 
 [project.scripts]

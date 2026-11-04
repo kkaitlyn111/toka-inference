@@ -5,12 +5,12 @@ import numpy as np
 import torch.multiprocessing as mp
 from loguru import logger
 from tokenizers import Tokenizer
-from transformers import AutoTokenizer, GenerationConfig
 
 from tokasaurus.common_types import ServerConfig
 from tokasaurus.manager.allocator import BatchIndexAllocator, BlockAllocator
 from tokasaurus.manager.monitoring import StatsTracker
 from tokasaurus.manager.stopping_predictor import EarlyStoppingTracker
+from tokasaurus.model.loading import get_inner_tokenizer, load_gen_config, load_tokenizer
 from tokasaurus.server.types import RequestOutput, SamplingParams, TokasaurusRequest
 
 
@@ -312,14 +312,14 @@ class ManagerState:
     last_step_num_prefill: int = 1024 * 1024 * 1024
 
     def __post_init__(self):
-        self.tokenizer = AutoTokenizer.from_pretrained(self.config.tokenizer)
-        self.generation_config = GenerationConfig.from_pretrained(
+        self.tokenizer = load_tokenizer(self.config.tokenizer)
+        self.generation_config = load_gen_config(
             self.config.model, trust_remote_code=True
         )
         self.logger = logger.bind(process_name=self.process_name)
 
     def get_tokenizer(self) -> Tokenizer:
-        return self.tokenizer._tokenizer  # type: ignore
+        return get_inner_tokenizer(self.tokenizer)
 
     def deallocate(self, seq: Sequence):
         assert seq.kv_indices is not None
