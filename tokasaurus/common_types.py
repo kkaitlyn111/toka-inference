@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import Callable
 
 import pydra
+import torch
 import torch.multiprocessing as mp
 
 from tokasaurus.core import complete_server_startup
@@ -145,6 +146,19 @@ class ServerConfig(pydra.Config):
 
     def finalize(self):
         super().finalize()
+
+        # On ROCm, attention runs through tokasaurus/model/attn_backend/, whose plan()
+        # reads page-table lengths on the host. Host syncs are not graph-capturable,
+        # so a replayed graph would silently run a stale plan: force eager instead.
+        if torch.version.hip is not None and self.use_cudagraphs:
+            import warnings
+
+            warnings.warn(
+                "ROCm: disabling use_cudagraphs (the ROCm attention backend is not "
+                "graph-capturable). Set use_cudagraphs=False to silence this.",
+                stacklevel=2,
+            )
+            self.use_cudagraphs = False
 
         if self.use_spec_allocation:
             assert self.track_early_stopping, (

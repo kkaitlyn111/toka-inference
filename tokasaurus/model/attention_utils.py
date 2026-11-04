@@ -1,5 +1,5 @@
 import torch
-from flashinfer import (
+from tokasaurus.model.attn_backend import (
     BatchDecodeWithPagedKVCacheWrapper,
     BatchPrefillWithPagedKVCacheWrapper,
     cascade,

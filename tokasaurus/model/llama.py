@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 import transformers
 from accelerate import init_empty_weights
-from flashinfer import (
+from tokasaurus.model.attn_backend import (
     sampling_from_probs,
 )
 from torch import Tensor, nn
@@ -176,7 +176,7 @@ class LlamaAttention(nn.Module):
             attention_info = self.attention_info
             num_padding = attention_info.num_padding
 
-            if torch.cuda.is_current_stream_capturing():
+            if torch.cuda.is_available() and torch.cuda.is_current_stream_capturing():
                 assert num_padding == 0, f"no sirree, num_padding={num_padding}"
 
             orig_q = ragged_q

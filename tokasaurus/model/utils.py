@@ -8,7 +8,7 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.nn.functional as F
-from flashinfer import cascade
+from tokasaurus.model.attn_backend import cascade
 from torch import Tensor
 from torch.distributed._symmetric_memory import enable_symm_mem_for_group
 from tqdm import tqdm
