@@ -63,14 +63,13 @@ class Gemma4Config(PretrainedConfig):
             "use_bidirectional_attention", "vision"
         )
 
-        self.tie_word_embeddings = text.get(
-            "tie_word_embeddings", kwargs.pop("tie_word_embeddings", True)
-        )
+        # passed through super(): PretrainedConfig.__init__ otherwise resets it to True
+        tie = text.get("tie_word_embeddings", kwargs.pop("tie_word_embeddings", True))
         # eos/bos/pad from the text config (wrapper-level ids are for multimodal)
         kwargs.setdefault("eos_token_id", text.get("eos_token_id", 1))
         kwargs.setdefault("bos_token_id", text.get("bos_token_id", 2))
         kwargs.setdefault("pad_token_id", text.get("pad_token_id", 0))
-        super().__init__(**kwargs)
+        super().__init__(tie_word_embeddings=tie, **kwargs)
 
     # --- per-layer geometry helpers -------------------------------------
     def layer_type(self, layer_idx: int) -> str:
