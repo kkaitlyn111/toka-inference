@@ -4,7 +4,7 @@ This repo extends [Tokasaurus](https://github.com/ScalingIntelligence/tokasaurus
 high-throughput LLM inference engine, in a few practical uses. It adds compatibility with 1. AMD (ROCm attention
 backend built on AITER kernels), 2. hybrid-attention architectures that mix full attention
 with Gated DeltaNet (GDN) linear attention or sliding-window attention (SWA), and 3. native
-support for the GLM, Qwen, Gemma, OLMo, Muse, gpt-oss etc. model families. Across these families, it supports inference with Cartridges (trained KV cache modules) and Attention Matching, along with capturing of GDN state.
+support for the GLM, Qwen, Gemma, OLMo, Muse, gpt-oss etc. model families. Across these families, it supports inference with Cartridges (trained KV cache modules) and Attention Matching.
 
 ## Models
 
