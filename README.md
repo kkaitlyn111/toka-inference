@@ -20,9 +20,7 @@ support for the GLM, Qwen, Gemma, OLMo, Muse, gpt-oss etc. model families. Acros
 
 ## Benchmark
 
-On repeated sampling for GSM8K (Qwen2.5-Math-1.5B-Instruct, 4096 problems × 32 samples,
-one A100), Tokasaurus finishes in 729 s and vLLM in 2206 s, at the same pass@k. Details
-are in [`benchmarking/RESULTS.md`](benchmarking/RESULTS.md).
+Implementations are verified against vllm and HF generate for log prob correctness and efficiency.
 
 ## Installation
 
