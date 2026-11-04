@@ -4,8 +4,9 @@ An extension of [Tokasaurus](https://github.com/ScalingIntelligence/tokasaurus),
 high-throughput LLM inference engine, that adds:
 
 - an **AMD ROCm backend** (AITER kernels on MI350X, flashinfer unchanged on NVIDIA);
-- **hybrid-attention architectures**: sliding-window + full attention (SWA) models;
-- more **model families**: GLM, Qwen, Gemma, OLMo and Muse.
+- **hybrid-attention architectures**: gated DeltaNet (GDN) linear-attention hybrids and
+  sliding-window (SWA) models;
+- more **model families**: GLM, Qwen, Gemma, OLMo, Muse and gpt-oss.
 
 It also includes an engine benchmark harness.
 
@@ -18,13 +19,17 @@ It also includes an engine benchmark harness.
 | GLM-4.6 (355B) | MoE, FP8 | supported | parity vs HF on CPU; GPU parity pending |
 | Gemma 4 31B | sliding-window + full attention | supported | parity vs HF on CPU; GPU parity pending |
 | Muse Glimmer 30B | sliding-window + NoPE full attention | supported | parity vs HF on CPU; GPU parity pending |
+| Qwen 3.5 9B | gated DeltaNet + full attention | supported | parity vs HF on CPU; GPU parity pending |
+| gpt-oss 20B / 120B | MoE, MXFP4, attention sinks, sliding window | supported | parity vs HF on CPU; GPU parity pending |
 
 ## What's added
 
 - **Models:** native OLMo (`model/olmo.py`), GLM-4.6 with grouped-GEMM MoE dispatch and
-  FP8 dequant at load (`model/glm4_moe.py`), and Gemma 4 / Muse Glimmer on a shared
-  per-layer-type attention base (`model/sliding_window.py`). All of them work with the
-  transformers version upstream pins.
+  FP8 dequant at load (`model/glm4_moe.py`), Gemma 4 / Muse Glimmer on a shared
+  per-layer-type attention base (`model/sliding_window.py`), Qwen 3.5 with gated DeltaNet
+  layers whose recurrent state lives in per-sequence slots (`model/qwen3_5.py`,
+  `model/gated_deltanet.py`), and gpt-oss with MXFP4 dequant at load and attention sinks
+  (`model/gpt_oss.py`). All of them work with the transformers version upstream pins.
 - **AMD ROCm backend** (`model/attn_backend/`): every flashinfer call goes through one
   module. On CUDA it's flashinfer; on ROCm it's AMD's AITER kernels, with a portable
   reference implementation as the fallback and test oracle. Details and numbers in
