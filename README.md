@@ -4,8 +4,7 @@ An extension of [Tokasaurus](https://github.com/ScalingIntelligence/tokasaurus),
 high-throughput LLM inference engine, that adds:
 
 - an **AMD ROCm backend** (AITER kernels on MI350X, flashinfer unchanged on NVIDIA);
-- **hybrid-attention architectures**: sliding-window (SWA) models now, gated-DeltaNet (GDN)
-  hybrids coming soon;
+- **hybrid-attention architectures**: sliding-window + full attention (SWA) models;
 - more **model families**: GLM, Qwen, Gemma, OLMo and Muse.
 
 It also includes an engine benchmark harness.
@@ -19,8 +18,6 @@ It also includes an engine benchmark harness.
 | GLM-4.6 (355B) | MoE, FP8 | supported | parity vs HF on CPU; GPU parity pending |
 | Gemma 4 31B | sliding-window + full attention | supported | parity vs HF on CPU; GPU parity pending |
 | Muse Glimmer 30B | sliding-window + NoPE full attention | supported | parity vs HF on CPU; GPU parity pending |
-| Qwen 3.5 9B and other gated-DeltaNet hybrids | linear-attention hybrid | coming soon | |
-| gpt-oss 20B | MoE, attention sinks | coming soon | |
 
 ## What's added
 
