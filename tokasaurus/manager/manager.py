@@ -1039,7 +1039,9 @@ def start_manager(
         config=config,
         scheduling_queue=SchedulingQueue(),
         block_allocator=BlockAllocator(
-            num_blocks=config.kv_cache_num_blocks(), page_size=config.page_size
+            num_blocks=config.kv_cache_num_blocks(),
+            page_size=config.page_size,
+            disable_prefix_cache=config.disable_prefix_cache,
         ),
         batch_index_allocator=BatchIndexAllocator(config.max_seqs_per_forward),
         q_manager_to_model=q_manager_to_model,

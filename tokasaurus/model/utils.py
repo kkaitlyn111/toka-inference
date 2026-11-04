@@ -8,7 +8,6 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.nn.functional as F
-from tokasaurus.model.attn_backend import cascade
 from torch import Tensor
 from torch.distributed._symmetric_memory import enable_symm_mem_for_group
 from tqdm import tqdm
@@ -16,13 +15,14 @@ from tqdm import tqdm
 from tokasaurus.common_types import ServerConfig
 from tokasaurus.manager.input_building import make_dummy_batch
 from tokasaurus.model.attention_utils import create_wrappers_for_cudagraph
-from tokasaurus.model.llama import LlamaForCausalLM
-from tokasaurus.model.qwen import Qwen2ForCausalLM
-from tokasaurus.model.qwen3 import Qwen3ForCausalLM
+from tokasaurus.model.attn_backend import cascade
 from tokasaurus.model.gemma4 import Gemma4ForCausalLM
 from tokasaurus.model.glm4_moe import Glm4MoeForCausalLM
+from tokasaurus.model.llama import LlamaForCausalLM
 from tokasaurus.model.muse_glimmer import MuseGlimmerForCausalLM
 from tokasaurus.model.olmo import OlmoForCausalLM
+from tokasaurus.model.qwen import Qwen2ForCausalLM
+from tokasaurus.model.qwen3 import Qwen3ForCausalLM
 from tokasaurus.model.types import (
     BasicWorkerState,
     BatchState,
@@ -363,6 +363,7 @@ def make_model(
         tp_group=tp_group,
         torch_compile=config.torch_compile,
         enable_chosen_logprobs=config.enable_chosen_logprobs,
+        max_seqs_per_forward=config.max_seqs_per_forward,
         topk_logprobs=config.max_topk_logprobs,
     )
 

@@ -127,9 +127,10 @@ def pick_blocks_for_allocation(
 
 
 class BlockAllocator:
-    def __init__(self, num_blocks: int, page_size: int):
+    def __init__(self, num_blocks: int, page_size: int, disable_prefix_cache: bool = False):
         self.num_blocks = num_blocks
         self.page_size = page_size
+        self.disable_prefix_cache = disable_prefix_cache
 
         self.all_blocks = [PrefixTreeBlock(idx=i) for i in range(num_blocks)]
         self.floating_blocks = list(self.all_blocks)
@@ -194,6 +195,8 @@ class BlockAllocator:
             assert all_used_seq_ids == seq_ids
 
     def prefix_match(self, input_ids: list[int]) -> list[PrefixTreeBlock]:
+        if self.disable_prefix_cache:
+            return []
         cached_blocks = []
         cur_block_in_tree = self.prefix_tree
 

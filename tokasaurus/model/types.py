@@ -176,6 +176,11 @@ class AttentionInfoBuilder:
 
     num_padding: int = 0
 
+    # recurrent-state slots for hybrid models (see AttentionInfo)
+    prefill_state_slots: list[int] = field(default_factory=list)
+    prefill_has_init_state: list[bool] = field(default_factory=list)
+    decode_state_slots: list[int] = field(default_factory=list)
+
     def build(self) -> "AttentionInfo":
         """Convert builders to tensors"""
         return AttentionInfo(
@@ -189,6 +194,9 @@ class AttentionInfoBuilder:
             if self.hydragen_builder
             else None,
             num_padding=self.num_padding,
+            prefill_state_slots=torch.tensor(self.prefill_state_slots, dtype=torch.long),
+            prefill_has_init_state=torch.tensor(self.prefill_has_init_state, dtype=torch.bool),
+            decode_state_slots=torch.tensor(self.decode_state_slots, dtype=torch.long),
         )
 
 
@@ -210,6 +218,14 @@ class AttentionInfo:
 
     # to make batches that are a tp-sized multiple for tensor parallelism
     num_padding: int = 0
+
+    # Hybrid models (gated DeltaNet) keep a fixed-size recurrent state per sequence in a
+    # slot table indexed by the sequence's batch index. has_init_state is false for a
+    # sequence's first prefill chunk; it is set by the manager because a nonzero start
+    # position could otherwise also mean a prefix-cache hit with no state to resume.
+    prefill_state_slots: Tensor | None = None  # [prefill_info.num_seqs]
+    prefill_has_init_state: Tensor | None = None  # [prefill_info.num_seqs]
+    decode_state_slots: Tensor | None = None  # [decode_info.num_seqs]
 
     def split_q(self, q: Tensor):
         start = 0
@@ -503,6 +519,9 @@ class ExtraModelConfig:
     torch_compile: bool = False
 
     rope_scaling: dict | None = None
+
+    # sizes per-sequence state tables (recurrent state in hybrid models)
+    max_seqs_per_forward: int = 1024
 
     enable_chosen_logprobs: bool = True
     topk_logprobs: int | None = None

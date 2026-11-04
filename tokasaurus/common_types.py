@@ -8,7 +8,12 @@ import torch.multiprocessing as mp
 
 from tokasaurus.core import complete_server_startup
 
-SLIDING_WINDOW_MODEL_TYPES = ("gemma4", "muse_glimmer")
+# models with per-layer-type wrapper collections or recurrent state, which the
+# cudagraph recorder and hydragen don't support
+EAGER_ONLY_MODEL_TYPES = ("gemma4", "muse_glimmer")
+# models with per-sequence recurrent state, which prefix caching would corrupt: a cached
+# prefix restores the KV cache but not the state that scanning it would have produced
+RECURRENT_MODEL_TYPES: tuple[str, ...] = ()
 
 
 class TimedBarrier:
@@ -78,6 +83,8 @@ class ServerConfig(pydra.Config):
 
     page_size: int = 16
     kv_cache_num_tokens: int = 1024 * 128
+    # forced on for models with recurrent state (see RECURRENT_MODEL_TYPES)
+    disable_prefix_cache: bool = False
 
     torch_compile: bool = False
 
@@ -176,14 +183,16 @@ class ServerConfig(pydra.Config):
 
         model_config = self.model_config()
 
-        # these keep one wrapper collection per layer type (sliding vs full window),
-        # which neither the cudagraph recorder nor hydragen supports
-        if model_config.model_type in SLIDING_WINDOW_MODEL_TYPES and (
+        if model_config.model_type in EAGER_ONLY_MODEL_TYPES and (
             self.use_cudagraphs or self.use_hydragen
         ):
-            print(f"{self.model}: disabling cudagraphs and hydragen (per-layer-type windows)")
+            print(f"{self.model}: disabling cudagraphs and hydragen")
             self.use_cudagraphs = False
             self.use_hydragen = False
+
+        if model_config.model_type in RECURRENT_MODEL_TYPES and not self.disable_prefix_cache:
+            print(f"{self.model}: disabling prefix caching (recurrent state)")
+            self.disable_prefix_cache = True
 
         if self.max_num_tokens_per_request is None:
             self.max_num_tokens_per_request = min(

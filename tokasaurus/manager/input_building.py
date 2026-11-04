@@ -77,6 +77,9 @@ def make_dummy_batch(
         prefill_builder=prefill_builder,
         decode_builder=decode_builder,
         hydragen_builder=None,
+        prefill_state_slots=[0] if prefill_tokens > 0 else [],
+        prefill_has_init_state=[False] if prefill_tokens > 0 else [],
+        decode_state_slots=[0] * decode_tokens,
     )
 
     # includes prefill lm head tokens and decode tokens
@@ -296,6 +299,15 @@ def seqs_to_input(
     for seq in decoding_seqs:
         register_batch_index(seq, 1)
 
+    # recurrent-state slots (hybrid models): the slot is the sequence's batch index, and
+    # a prefill chunk resumes from the stored state unless it is the sequence's first.
+    # Prefix caching is off for these models, so a nonzero start means a continuation.
+    prefill_state_slots, prefill_has_init_state = [], []
+    for i, (seq, _) in enumerate(prefill_seqs):
+        start_position = seq.prompt_scheduled + (starting_prefill_offset if i == 0 else 0)
+        prefill_state_slots.append(seq.batch_index)
+        prefill_has_init_state.append(start_position != 0)
+
     # No need to call build() on builders anymore, just pass them directly
     attention_info_builder = AttentionInfoBuilder(
         page_size=page_size,
@@ -303,6 +315,9 @@ def seqs_to_input(
         prefill_builder=prefill_builder,
         decode_builder=decode_builder,
         hydragen_builder=hydragen_builder if use_hydragen else None,
+        prefill_state_slots=prefill_state_slots,
+        prefill_has_init_state=prefill_has_init_state,
+        decode_state_slots=[seq.batch_index for seq in decoding_seqs],
     )
 
     inp = ModelInput(

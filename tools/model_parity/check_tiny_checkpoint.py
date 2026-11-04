@@ -1,9 +1,9 @@
 """Compare tokasaurus against the HF reference logits for a tiny checkpoint.
 
 Loads the checkpoint through `from_pretrained` (config shim + weight-name mapping),
-prefills all but the last token, then decodes the last token, all through tokasaurus'
-paged attention, and compares the full next-token distributions to the reference
-written by make_tiny_checkpoints.py.
+prefills all but the last token in two chunks, then decodes the last token, all through
+tokasaurus' paged attention (and recurrent-state slots for hybrid models), and compares
+the full next-token distributions to the reference written by make_tiny_checkpoints.py.
 
     python -m tools.model_parity.check_tiny_checkpoint tests/fixtures/tiny_models/gemma4
     python -m tools.model_parity.check_tiny_checkpoint <dir> --backend portable   # CPU
@@ -19,6 +19,8 @@ import sys
 from pathlib import Path
 
 PAGE_SIZE = 16
+# use a nonzero slot so a slot-indexing mistake can't pass by accident
+STATE_SLOTS = 3
 # fp32 on the portable backend should agree to rounding; bf16 flashinfer kernels
 # reorder reductions, so allow a looser bound there
 TOLERANCES = {
@@ -95,7 +97,9 @@ def main():
     torch.set_default_dtype(dtype)
     model = model_classes[config["model_type"]].from_pretrained(
         str(args.model_dir),
-        extra_config=ExtraModelConfig(topk_logprobs=vocab),
+        extra_config=ExtraModelConfig(
+            topk_logprobs=vocab, max_seqs_per_forward=STATE_SLOTS
+        ),
         device=device,
         dtype=dtype,
     )
@@ -103,7 +107,7 @@ def main():
         num_pages=math.ceil(seq_len / PAGE_SIZE) + 1, page_size=PAGE_SIZE
     )
 
-    def run(start: int, end: int, decode: bool):
+    def run(start: int, end: int, decode: bool, slot: int = STATE_SLOTS - 1):
         num = end - start
         query = page_info(
             PageInformation, torch, start=start, end=end, device=device, decode=decode
@@ -114,6 +118,11 @@ def main():
             append_kv_token_indices=torch.arange(start, end, device=device),
             prefill_info=empty if decode else query,
             decode_info=query if decode else empty,
+            prefill_state_slots=torch.tensor([] if decode else [slot]),
+            prefill_has_init_state=torch.tensor(
+                [] if decode else [start > 0], dtype=torch.bool
+            ),
+            decode_state_slots=torch.tensor([slot] if decode else [], dtype=torch.long),
         )
         batch_state = BatchState(
             input_ids=input_ids[start:end].to(device),
@@ -132,9 +141,14 @@ def main():
         logprobs.scatter_(1, out.topk_indices.long(), out.topk_logprobs.float())
         return logprobs.cpu()
 
-    # prefill [0, S-1), then decode position S-1 against the cached prefix
+    # chunked prefill [0, S/2) + [S/2, S-1), then decode position S-1
+    half = seq_len // 2
     toka = torch.cat(
-        [run(0, seq_len - 1, decode=False), run(seq_len - 1, seq_len, decode=True)]
+        [
+            run(0, half, decode=False),
+            run(half, seq_len - 1, decode=False),
+            run(seq_len - 1, seq_len, decode=True),
+        ]
     )
     ref_logprobs = torch.log_softmax(ref_logits.float(), dim=-1)
 
