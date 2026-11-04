@@ -2,7 +2,7 @@
 
 transformers' Auto* classes cannot read AI2's original `hf_olmo` checkpoints without
 ai2-olmo's remote code, so those are routed to `olmo_config`. Gemma 4, Muse Glimmer,
-GLM-4.6 and Qwen 3.5 configs are registered with AutoConfig, since the pinned transformers predates them.
+GLM-4.6, Qwen 3.5 and gpt-oss configs are registered with AutoConfig, since the pinned transformers predates them.
 """
 
 import json
@@ -13,6 +13,7 @@ from tokenizers import Tokenizer
 
 from tokasaurus.model.gemma4_config import register_gemma4_config
 from tokasaurus.model.glm4_moe_config import register_glm4_moe_config
+from tokasaurus.model.gpt_oss_config import register_gpt_oss_config
 from tokasaurus.model.muse_glimmer_config import register_muse_glimmer_config
 from tokasaurus.model.olmo_config import (
     OlmoConfig,
@@ -32,6 +33,7 @@ def load_config(model_path: str, trust_remote_code: bool = False):
     # model types the pinned transformers predates
     register_gemma4_config()
     register_glm4_moe_config()
+    register_gpt_oss_config()
     register_muse_glimmer_config()
     register_qwen3_5_config()
     return AutoConfig.from_pretrained(model_path, trust_remote_code=trust_remote_code)

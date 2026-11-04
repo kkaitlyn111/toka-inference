@@ -1,5 +1,5 @@
 """Build tiny random checkpoints plus HF reference logits for the natively ported models
-(Gemma 4, Muse Glimmer, GLM-4.6, Qwen 3.5).
+(Gemma 4, Muse Glimmer, GLM-4.6, Qwen 3.5, gpt-oss).
 
 Run under transformers >= 5.15, which implements all of them:
 
@@ -111,6 +111,33 @@ QWEN3_5_TEXT = dict(
     ),
     tie_word_embeddings=False,
 )
+
+GPT_OSS = dict(
+    num_hidden_layers=4,  # alternating sliding / full
+    num_local_experts=4,
+    num_experts_per_tok=2,
+    vocab_size=VOCAB,
+    hidden_size=64,
+    intermediate_size=32,  # MXFP4 packs 32 values per scale
+    head_dim=16,
+    num_attention_heads=4,
+    num_key_value_heads=2,
+    sliding_window=16,
+    max_position_embeddings=512,
+    tie_word_embeddings=False,
+)
+GPT_OSS_ROPE = dict(
+    rope_type="yarn",
+    rope_theta=150_000.0,
+    factor=32.0,
+    beta_fast=32.0,
+    beta_slow=1.0,
+    truncate=False,
+    original_max_position_embeddings=4096,
+)
+# MXFP4 scale exponents (bias 127) for the random expert weights: 2^-7 .. 2^-4
+MXFP4_SCALE_RANGE = (120, 124)
+
 
 def randomize(module, g):
     with torch.no_grad():
@@ -240,6 +267,81 @@ def qwen3_5_reference(text_config, g, input_ids):
     return weights, logits
 
 
+def build_gpt_oss(out_dir: Path, seed: int):
+    """Experts are stored as MXFP4 like the released checkpoints: random packed blocks and
+    scales, dequantized with transformers' own routine to set the reference weights."""
+    from transformers import GptOssConfig, GptOssForCausalLM
+    from transformers.integrations.mxfp4 import convert_moe_packed_tensors
+
+    config = GptOssConfig(**GPT_OSS, rope_parameters=GPT_OSS_ROPE)
+    config._attn_implementation = "eager"
+    model = GptOssForCausalLM(config).float().eval()
+    g = torch.Generator().manual_seed(seed)
+    randomize(model, g)
+
+    e, h, i = (
+        GPT_OSS["num_local_experts"],
+        GPT_OSS["hidden_size"],
+        GPT_OSS["intermediate_size"],
+    )
+    packed = {}
+    with torch.no_grad():
+        for layer_idx, layer in enumerate(model.model.layers):
+            # checkpoint layout: [E, out, in / 32, 16] bytes and [E, out, in / 32] scales
+            for proj, out_dim, in_dim in (
+                ("gate_up_proj", 2 * i, h),
+                ("down_proj", h, i),
+            ):
+                blocks = torch.randint(
+                    0,
+                    256,
+                    (e, out_dim, in_dim // 32, 16),
+                    generator=g,
+                    dtype=torch.uint8,
+                )
+                scales = torch.randint(
+                    *MXFP4_SCALE_RANGE,
+                    (e, out_dim, in_dim // 32),
+                    generator=g,
+                    dtype=torch.uint8,
+                )
+                weight = convert_moe_packed_tensors(blocks, scales, dtype=torch.float32)
+                getattr(layer.mlp.experts, proj).copy_(weight)
+                name = f"model.layers.{layer_idx}.mlp.experts.{proj}"
+                packed[f"{name}_blocks"] = blocks
+                packed[f"{name}_scales"] = scales
+
+    input_ids = torch.randint(0, VOCAB, (1, SEQ_LEN), generator=g)
+    with torch.no_grad():
+        logits = model(input_ids=input_ids, use_cache=False).logits[0]
+
+    weights = {
+        k: v
+        for k, v in model.state_dict().items()
+        if not k.endswith(("experts.gate_up_proj", "experts.down_proj"))
+    }
+    out_dir.mkdir(parents=True, exist_ok=True)
+    save_file(
+        {k: v.contiguous() for k, v in {**weights, **packed}.items()},
+        str(out_dir / "model.safetensors"),
+    )
+    # released config format: rope_theta + rope_scaling at the top level
+    rope = dict(GPT_OSS_ROPE)
+    config_json = {
+        "model_type": "gpt_oss",
+        **GPT_OSS,
+        "layer_types": config.layer_types,
+        "rope_theta": rope.pop("rope_theta"),
+        "rope_scaling": rope,
+        "rms_norm_eps": config.rms_norm_eps,
+    }
+    (out_dir / "config.json").write_text(json.dumps(config_json, indent=2))
+    torch.save(
+        {"input_ids": input_ids[0], "logits": logits.float()}, out_dir / "reference.pt"
+    )
+    print(f"gpt_oss -> {out_dir}")
+
+
 def build(model_type: str, text_kwargs: dict, out_dir: Path, seed: int):
     import transformers
 
@@ -291,6 +393,7 @@ def main():
         ),
         "glm4_moe": lambda out: build_glm4_moe(out, seed=2),
         "qwen3_5": lambda out: build("qwen3_5", QWEN3_5_TEXT, out, seed=3),
+        "gpt_oss": lambda out: build_gpt_oss(out, seed=4),
     }
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", type=Path, required=True)

@@ -18,6 +18,7 @@ from tokasaurus.model.attention_utils import create_wrappers_for_cudagraph
 from tokasaurus.model.attn_backend import cascade
 from tokasaurus.model.gemma4 import Gemma4ForCausalLM
 from tokasaurus.model.glm4_moe import Glm4MoeForCausalLM
+from tokasaurus.model.gpt_oss import GptOssForCausalLM
 from tokasaurus.model.llama import LlamaForCausalLM
 from tokasaurus.model.muse_glimmer import MuseGlimmerForCausalLM
 from tokasaurus.model.olmo import OlmoForCausalLM
@@ -332,6 +333,7 @@ model_type = (
     | MuseGlimmerForCausalLM
     | Glm4MoeForCausalLM
     | Qwen35ForCausalLM
+    | GptOssForCausalLM
 )
 
 models: dict[str, type[model_type]] = {
@@ -343,6 +345,7 @@ models: dict[str, type[model_type]] = {
     "muse_glimmer": MuseGlimmerForCausalLM,
     "glm4_moe": Glm4MoeForCausalLM,
     "qwen3_5": Qwen35ForCausalLM,
+    "gpt_oss": GptOssForCausalLM,
 }
 
 
