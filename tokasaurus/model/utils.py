@@ -19,7 +19,9 @@ from tokasaurus.model.attention_utils import create_wrappers_for_cudagraph
 from tokasaurus.model.llama import LlamaForCausalLM
 from tokasaurus.model.qwen import Qwen2ForCausalLM
 from tokasaurus.model.qwen3 import Qwen3ForCausalLM
+from tokasaurus.model.gemma4 import Gemma4ForCausalLM
 from tokasaurus.model.glm4_moe import Glm4MoeForCausalLM
+from tokasaurus.model.muse_glimmer import MuseGlimmerForCausalLM
 from tokasaurus.model.olmo import OlmoForCausalLM
 from tokasaurus.model.types import (
     BasicWorkerState,
@@ -325,6 +327,8 @@ model_type = (
     | Qwen2ForCausalLM
     | Qwen3ForCausalLM
     | OlmoForCausalLM
+    | Gemma4ForCausalLM
+    | MuseGlimmerForCausalLM
     | Glm4MoeForCausalLM
 )
 
@@ -333,6 +337,8 @@ models: dict[str, type[model_type]] = {
     "qwen2": Qwen2ForCausalLM,
     "qwen3": Qwen3ForCausalLM,
     "olmo": OlmoForCausalLM,
+    "gemma4": Gemma4ForCausalLM,
+    "muse_glimmer": MuseGlimmerForCausalLM,
     "glm4_moe": Glm4MoeForCausalLM,
 }
 

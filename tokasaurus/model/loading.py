@@ -1,13 +1,19 @@
 """Config / generation-config / tokenizer loading that works for both HF and hf_olmo models.
 
 transformers' Auto* classes cannot read AI2's original `hf_olmo` checkpoints without
-ai2-olmo's remote code, so those are routed to `olmo_config`. The GLM-4.6 config is
-registered with AutoConfig, since the pinned transformers predates it.
+ai2-olmo's remote code, so those are routed to `olmo_config`. Gemma 4, Muse Glimmer and
+GLM-4.6 configs are registered with AutoConfig, since the pinned transformers predates them.
 """
 
+import json
+from pathlib import Path
+
+import huggingface_hub
 from tokenizers import Tokenizer
 
+from tokasaurus.model.gemma4_config import register_gemma4_config
 from tokasaurus.model.glm4_moe_config import register_glm4_moe_config
+from tokasaurus.model.muse_glimmer_config import register_muse_glimmer_config
 from tokasaurus.model.olmo_config import (
     OlmoConfig,
     OlmoGenerationConfig,
@@ -23,7 +29,9 @@ def load_config(model_path: str, trust_remote_code: bool = False):
     from transformers import AutoConfig
 
     # model types the pinned transformers predates
+    register_gemma4_config()
     register_glm4_moe_config()
+    register_muse_glimmer_config()
     return AutoConfig.from_pretrained(model_path, trust_remote_code=trust_remote_code)
 
 
@@ -38,9 +46,54 @@ def load_gen_config(model_path: str, trust_remote_code: bool = False):
     )
 
 
+# tokenizer_class written by transformers >= 5, unknown to the 4.x pinned here
+TRANSFORMERS5_TOKENIZER_CLASSES = {"TokenizersBackend"}
+SPECIAL_TOKEN_KEYS = ("bos_token", "eos_token", "pad_token", "unk_token")
+
+
+def read_tokenizer_file(path: str, filename: str) -> Path | None:
+    local = Path(path) / filename
+    if local.exists():
+        return local
+    if Path(path).exists():
+        return None
+    try:
+        return Path(huggingface_hub.hf_hub_download(path, filename=filename))
+    except huggingface_hub.errors.EntryNotFoundError:
+        return None
+
+
+def load_transformers5_tokenizer(path: str, tokenizer_config: dict):
+    """Build a fast tokenizer from tokenizer.json for checkpoints saved by transformers 5
+    (e.g. Gemma 4, Muse Glimmer), whose tokenizer_config.json 4.x cannot parse."""
+    from transformers import PreTrainedTokenizerFast
+
+    special_tokens = {
+        k: v["content"] if isinstance(v, dict) else v
+        for k in SPECIAL_TOKEN_KEYS
+        if (v := tokenizer_config.get(k)) is not None
+    }
+    tokenizer = PreTrainedTokenizerFast(
+        tokenizer_file=str(read_tokenizer_file(path, "tokenizer.json")),
+        **special_tokens,
+    )
+    chat_template = tokenizer_config.get("chat_template")
+    if chat_template is None and (
+        jinja := read_tokenizer_file(path, "chat_template.jinja")
+    ):
+        chat_template = jinja.read_text()
+    tokenizer.chat_template = chat_template
+    return tokenizer
+
+
 def load_tokenizer(tokenizer_path: str):
     if is_olmo_checkpoint(tokenizer_path):
         return load_olmo_tokenizer(tokenizer_path)
+
+    if config_file := read_tokenizer_file(tokenizer_path, "tokenizer_config.json"):
+        tokenizer_config = json.loads(config_file.read_text())
+        if tokenizer_config.get("tokenizer_class") in TRANSFORMERS5_TOKENIZER_CLASSES:
+            return load_transformers5_tokenizer(tokenizer_path, tokenizer_config)
 
     from transformers import AutoTokenizer
 

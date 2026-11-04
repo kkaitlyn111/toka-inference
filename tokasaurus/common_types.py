@@ -8,6 +8,9 @@ import torch.multiprocessing as mp
 
 from tokasaurus.core import complete_server_startup
 
+SLIDING_WINDOW_MODEL_TYPES = ("gemma4", "muse_glimmer")
+
+
 class TimedBarrier:
     def __init__(self, num_procs: int, message: str):
         self.barrier = mp.Barrier(num_procs)
@@ -171,8 +174,18 @@ class ServerConfig(pydra.Config):
         if self.tokenizer is None:
             self.tokenizer = self.model
 
+        model_config = self.model_config()
+
+        # these keep one wrapper collection per layer type (sliding vs full window),
+        # which neither the cudagraph recorder nor hydragen supports
+        if model_config.model_type in SLIDING_WINDOW_MODEL_TYPES and (
+            self.use_cudagraphs or self.use_hydragen
+        ):
+            print(f"{self.model}: disabling cudagraphs and hydragen (per-layer-type windows)")
+            self.use_cudagraphs = False
+            self.use_hydragen = False
+
         if self.max_num_tokens_per_request is None:
-            model_config = self.model_config()
             self.max_num_tokens_per_request = min(
                 model_config.max_position_embeddings, self.kv_cache_num_tokens
             )
