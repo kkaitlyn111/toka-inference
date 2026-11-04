@@ -23,6 +23,7 @@ from tokasaurus.model.muse_glimmer import MuseGlimmerForCausalLM
 from tokasaurus.model.olmo import OlmoForCausalLM
 from tokasaurus.model.qwen import Qwen2ForCausalLM
 from tokasaurus.model.qwen3 import Qwen3ForCausalLM
+from tokasaurus.model.qwen3_5 import Qwen35ForCausalLM
 from tokasaurus.model.types import (
     BasicWorkerState,
     BatchState,
@@ -330,6 +331,7 @@ model_type = (
     | Gemma4ForCausalLM
     | MuseGlimmerForCausalLM
     | Glm4MoeForCausalLM
+    | Qwen35ForCausalLM
 )
 
 models: dict[str, type[model_type]] = {
@@ -340,6 +342,7 @@ models: dict[str, type[model_type]] = {
     "gemma4": Gemma4ForCausalLM,
     "muse_glimmer": MuseGlimmerForCausalLM,
     "glm4_moe": Glm4MoeForCausalLM,
+    "qwen3_5": Qwen35ForCausalLM,
 }
 
 

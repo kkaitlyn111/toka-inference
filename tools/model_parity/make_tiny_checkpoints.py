@@ -1,5 +1,5 @@
 """Build tiny random checkpoints plus HF reference logits for the natively ported models
-(Gemma 4, Muse Glimmer, GLM-4.6).
+(Gemma 4, Muse Glimmer, GLM-4.6, Qwen 3.5).
 
 Run under transformers >= 5.15, which implements all of them:
 
@@ -88,6 +88,29 @@ GLM4_MOE = dict(
     tie_word_embeddings=False,
 )
 
+QWEN3_5_TEXT = dict(
+    hidden_size=128,
+    intermediate_size=256,
+    num_hidden_layers=4,  # 3 gated-DeltaNet layers, then 1 attention layer
+    num_attention_heads=4,
+    num_key_value_heads=2,
+    head_dim=32,
+    linear_num_key_heads=2,
+    linear_num_value_heads=4,
+    linear_key_head_dim=16,
+    linear_value_head_dim=16,
+    linear_conv_kernel_dim=4,
+    vocab_size=VOCAB,
+    max_position_embeddings=512,
+    rope_parameters=dict(
+        rope_type="default",
+        rope_theta=10_000.0,
+        partial_rotary_factor=0.25,
+        mrope_interleaved=True,
+        mrope_section=[2, 1, 1],
+    ),
+    tie_word_embeddings=False,
+)
 
 def randomize(module, g):
     with torch.no_grad():
@@ -197,18 +220,42 @@ def build_glm4_moe(out_dir: Path, seed: int):
     print(f"glm4_moe: {sum(v.numel() for v in weights.values())} params -> {out_dir}")
 
 
+def qwen3_5_reference(text_config, g, input_ids):
+    from transformers import Qwen3_5ForCausalLM
+
+    model = Qwen3_5ForCausalLM(text_config).float().eval()
+    randomize(model, g)
+    with torch.no_grad():
+        logits = model(input_ids=input_ids, use_cache=False).logits[0]
+    # released checkpoints are vision-language wrappers: LM weights under
+    # model.language_model., lm_head at the top level
+    weights = {
+        (
+            "model.language_model." + k[len("model.") :]
+            if k.startswith("model.")
+            else k
+        ): v
+        for k, v in model.state_dict().items()
+    }
+    return weights, logits
+
+
 def build(model_type: str, text_kwargs: dict, out_dir: Path, seed: int):
     import transformers
 
-    prefix = "Gemma4" if model_type == "gemma4" else "MuseGlimmer"
+    prefix = {"gemma4": "Gemma4", "muse_glimmer": "MuseGlimmer", "qwen3_5": "Qwen3_5"}[
+        model_type
+    ]
     text_config = getattr(transformers, f"{prefix}TextConfig")(**text_kwargs)
     text_config._attn_implementation = "eager"
 
     g = torch.Generator().manual_seed(seed)
     input_ids = torch.randint(0, VOCAB, (1, SEQ_LEN), generator=g)
-    make_reference = (
-        gemma4_reference if model_type == "gemma4" else muse_glimmer_reference
-    )
+    make_reference = {
+        "gemma4": gemma4_reference,
+        "muse_glimmer": muse_glimmer_reference,
+        "qwen3_5": qwen3_5_reference,
+    }[model_type]
     weights, logits = make_reference(text_config, g, input_ids)
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -237,12 +284,22 @@ def build(model_type: str, text_kwargs: dict, out_dir: Path, seed: int):
 
 
 def main():
+    builders = {
+        "gemma4": lambda out: build("gemma4", GEMMA4_TEXT, out, seed=0),
+        "muse_glimmer": lambda out: build(
+            "muse_glimmer", MUSE_GLIMMER_TEXT, out, seed=1
+        ),
+        "glm4_moe": lambda out: build_glm4_moe(out, seed=2),
+        "qwen3_5": lambda out: build("qwen3_5", QWEN3_5_TEXT, out, seed=3),
+    }
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument(
+        "--models", nargs="+", choices=list(builders), default=list(builders)
+    )
     args = parser.parse_args()
-    build("gemma4", GEMMA4_TEXT, args.out / "gemma4", seed=0)
-    build("muse_glimmer", MUSE_GLIMMER_TEXT, args.out / "muse_glimmer", seed=1)
-    build_glm4_moe(args.out / "glm4_moe", seed=2)
+    for name in args.models:
+        builders[name](args.out / name)
 
 
 if __name__ == "__main__":

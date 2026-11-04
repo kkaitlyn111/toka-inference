@@ -1,3 +1,4 @@
 FULL_ATTENTION = "full_attention"
 SLIDING_ATTENTION = "sliding_attention"
+LINEAR_ATTENTION = "linear_attention"
 LAYER_TYPES = (SLIDING_ATTENTION, FULL_ATTENTION)

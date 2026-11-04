@@ -10,10 +10,10 @@ from tokasaurus.core import complete_server_startup
 
 # models with per-layer-type wrapper collections or recurrent state, which the
 # cudagraph recorder and hydragen don't support
-EAGER_ONLY_MODEL_TYPES = ("gemma4", "muse_glimmer")
+EAGER_ONLY_MODEL_TYPES = ("gemma4", "muse_glimmer", "qwen3_5")
 # models with per-sequence recurrent state, which prefix caching would corrupt: a cached
 # prefix restores the KV cache but not the state that scanning it would have produced
-RECURRENT_MODEL_TYPES: tuple[str, ...] = ()
+RECURRENT_MODEL_TYPES = ("qwen3_5",)
 
 
 class TimedBarrier:

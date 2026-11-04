@@ -1,8 +1,8 @@
 """Config / generation-config / tokenizer loading that works for both HF and hf_olmo models.
 
 transformers' Auto* classes cannot read AI2's original `hf_olmo` checkpoints without
-ai2-olmo's remote code, so those are routed to `olmo_config`. Gemma 4, Muse Glimmer and
-GLM-4.6 configs are registered with AutoConfig, since the pinned transformers predates them.
+ai2-olmo's remote code, so those are routed to `olmo_config`. Gemma 4, Muse Glimmer,
+GLM-4.6 and Qwen 3.5 configs are registered with AutoConfig, since the pinned transformers predates them.
 """
 
 import json
@@ -20,6 +20,7 @@ from tokasaurus.model.olmo_config import (
     is_olmo_checkpoint,
     load_olmo_tokenizer,
 )
+from tokasaurus.model.qwen3_5_config import register_qwen3_5_config
 
 
 def load_config(model_path: str, trust_remote_code: bool = False):
@@ -32,6 +33,7 @@ def load_config(model_path: str, trust_remote_code: bool = False):
     register_gemma4_config()
     register_glm4_moe_config()
     register_muse_glimmer_config()
+    register_qwen3_5_config()
     return AutoConfig.from_pretrained(model_path, trust_remote_code=trust_remote_code)
 
 

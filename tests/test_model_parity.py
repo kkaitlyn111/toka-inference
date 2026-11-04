@@ -1,4 +1,4 @@
-"""Natively ported models (Gemma 4, Muse Glimmer, GLM-4.6) against transformers 5.15
+"""Natively ported models (Gemma 4, Muse Glimmer, GLM-4.6, Qwen 3.5) against transformers 5.15
 on tiny random checkpoints.
 
 Each check loads a fixture from tests/fixtures/tiny_models (written by
@@ -26,7 +26,9 @@ BACKENDS = ["portable"] + (["flashinfer"] if torch.cuda.is_available() else [])
 
 
 @pytest.mark.parametrize("backend", BACKENDS)
-@pytest.mark.parametrize("model", ["gemma4", "muse_glimmer", "glm4_moe"])
+@pytest.mark.parametrize(
+    "model", ["gemma4", "muse_glimmer", "glm4_moe", "qwen3_5"]
+)
 def test_matches_hf_reference(model, backend):
     model_dir = FIXTURES / model
     if not (model_dir / "reference.pt").exists():

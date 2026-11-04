@@ -73,6 +73,7 @@ def main():
     from tokasaurus.model.gemma4 import Gemma4ForCausalLM
     from tokasaurus.model.glm4_moe import Glm4MoeForCausalLM
     from tokasaurus.model.muse_glimmer import MuseGlimmerForCausalLM
+    from tokasaurus.model.qwen3_5 import Qwen35ForCausalLM
     from tokasaurus.model.types import (
         AttentionInfo,
         BatchSamplingParams,
@@ -85,6 +86,7 @@ def main():
         "gemma4": Gemma4ForCausalLM,
         "muse_glimmer": MuseGlimmerForCausalLM,
         "glm4_moe": Glm4MoeForCausalLM,
+        "qwen3_5": Qwen35ForCausalLM,
     }
     config = json.loads((args.model_dir / "config.json").read_text())
     vocab = config.get("text_config", config)["vocab_size"]
