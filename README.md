@@ -1,8 +1,14 @@
 # toka-inference
 
 An extension of [Tokasaurus](https://github.com/ScalingIntelligence/tokasaurus), the
-high-throughput LLM inference engine, with additional model support, an AMD ROCm backend,
-and an engine benchmark harness.
+high-throughput LLM inference engine, that adds:
+
+- an **AMD ROCm backend** (AITER kernels on MI350X, flashinfer unchanged on NVIDIA);
+- **hybrid-attention architectures**: sliding-window (SWA) models now, gated-DeltaNet (GDN)
+  hybrids coming soon;
+- more **model families**: GLM, Qwen, Gemma, OLMo and Muse.
+
+It also includes an engine benchmark harness.
 
 ## Supported models
 
